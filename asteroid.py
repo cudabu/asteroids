@@ -17,6 +17,7 @@ class Asteroid(CircleShape):
 
     def update(self, dt):
         self.position += self.velocity * dt
+        self.wrap()
 
     def split(self):
         Explosion(self.position.x, self.position.y, self.radius)
