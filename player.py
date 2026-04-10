@@ -9,7 +9,7 @@ from constants import (
     PLAYER_INVINCIBILITY_SECONDS, PLAYER_BOMB_COUNT,
     SPREAD_ANGLE, SPREAD_COOLDOWN,
     RAPID_COOLDOWN, RAPID_SHOT_SPEED, RAPID_SHOT_RADIUS,
-    LASER_COOLDOWN, SCREEN_WIDTH, SCREEN_HEIGHT,
+    LASER_KILL_RATE, SCREEN_WIDTH, SCREEN_HEIGHT,
 )
 from laser import LaserBeam
 from shot import Shot
@@ -21,6 +21,13 @@ WEAPONS = ["Single", "Spread", "Rapid", "Laser"]
 class Player(CircleShape):
     # Set in main.py so the laser raycast can check asteroids
     asteroids = None
+    _pending_score = 0
+
+    @classmethod
+    def pop_score(cls):
+        score = cls._pending_score
+        cls._pending_score = 0
+        return score
 
     def __init__(self, x, y):
         super().__init__(x, y, PLAYER_RADIUS)
@@ -29,6 +36,8 @@ class Player(CircleShape):
         self.invincibility_timer = 0
         self.bombs = PLAYER_BOMB_COUNT
         self._weapon_index = 0
+        self._laser_beam = None
+        self.laser_kill_timer = 0
 
     @property
     def weapon(self):
@@ -56,6 +65,7 @@ class Player(CircleShape):
         self.velocity = pygame.Vector2(0, 0)
         self.rotation = 0
         self.invincibility_timer = PLAYER_INVINCIBILITY_SECONDS
+        self._kill_laser()
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -67,6 +77,7 @@ class Player(CircleShape):
 
     def update(self, dt):
         self.shoot_timer -= dt
+        self.laser_kill_timer -= dt
         self.invincibility_timer = max(0, self.invincibility_timer - dt)
         self.velocity *= PLAYER_DRAG ** dt
         self.position += self.velocity * dt
@@ -80,15 +91,25 @@ class Player(CircleShape):
             self.move(-dt)
         if keys[pygame.K_w]:
             self.move(dt)
-        if keys[pygame.K_SPACE]:
-            self.shoot()
-        if keys[pygame.K_b]:
-            self.drop_bomb()
+
+        if keys[pygame.K_SPACE] and self.weapon == "Laser":
+            self._update_laser()
+        else:
+            self._kill_laser()
+            if keys[pygame.K_SPACE]:
+                self.shoot()
+
         self.wrap()
 
+    def _kill_laser(self):
+        if self._laser_beam:
+            self._laser_beam.kill()
+            self._laser_beam = None
+
     def _cycle_weapon(self, direction):
+        self._kill_laser()
         self._weapon_index = (self._weapon_index + direction) % len(WEAPONS)
-        self.shoot_timer = 0  # no penalty when switching
+        self.shoot_timer = 0
 
     def drop_bomb(self):
         if self.bombs <= 0:
@@ -108,9 +129,6 @@ class Player(CircleShape):
         elif self.weapon == "Rapid":
             self._shoot_rapid()
             self.shoot_timer = RAPID_COOLDOWN
-        elif self.weapon == "Laser":
-            self._shoot_laser()
-            self.shoot_timer = LASER_COOLDOWN
 
     def _shoot_single(self):
         shot = Shot(self.position.x, self.position.y)
@@ -125,11 +143,10 @@ class Player(CircleShape):
         shot = Shot(self.position.x, self.position.y, RAPID_SHOT_RADIUS)
         shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation) * RAPID_SHOT_SPEED
 
-    def _shoot_laser(self):
+    def _raycast(self):
+        """Returns (hit_asteroid, end_point) for the current firing direction."""
         direction = pygame.Vector2(0, 1).rotate(self.rotation)
         tip = self.position + direction * self.radius
-
-        # Find the closest asteroid in the firing direction via ray-circle intersection
         hit_asteroid = None
         hit_t = float("inf")
         if self.asteroids:
@@ -146,13 +163,17 @@ class Player(CircleShape):
                 if 0 <= t < hit_t:
                     hit_t = t
                     hit_asteroid = asteroid
+        end = tip + direction * (hit_t if hit_asteroid else max(SCREEN_WIDTH, SCREEN_HEIGHT))
+        return tip, hit_asteroid, end
 
-        # Beam ends at the hit point or the screen edge
-        if hit_asteroid:
-            end = tip + direction * hit_t
-            hit_asteroid.split()
+    def _update_laser(self):
+        tip, hit_asteroid, end = self._raycast()
+
+        if self._laser_beam is None:
+            self._laser_beam = LaserBeam(tip, end)
         else:
-            # Extend to whichever screen boundary is hit first
-            end = tip + direction * max(SCREEN_WIDTH, SCREEN_HEIGHT)
+            self._laser_beam.set_points(tip, end)
 
-        LaserBeam(tip, end)
+        if hit_asteroid and self.laser_kill_timer <= 0:
+            Player._pending_score += hit_asteroid.split()
+            self.laser_kill_timer = LASER_KILL_RATE

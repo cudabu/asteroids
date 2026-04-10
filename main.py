@@ -2,7 +2,7 @@ import sys
 
 import pygame
 
-from constants import SCREEN_HEIGHT, SCREEN_WIDTH, PLAYER_LIVES
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH, PLAYER_LIVES, BOMB_SCORE_INTERVAL
 from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
@@ -22,6 +22,7 @@ def main():
     clock = pygame.time.Clock()
     dt = 0
     score = 0
+    next_bomb_threshold = BOMB_SCORE_INTERVAL
     lives = PLAYER_LIVES
     font = pygame.font.SysFont(None, 36)
 
@@ -59,11 +60,13 @@ def main():
                     player._cycle_weapon(-1)
                 elif event.key == pygame.K_e:
                     player._cycle_weapon(1)
+                elif event.key == pygame.K_b:
+                    player.drop_bomb()
 
         dt = clock.tick(60) / 1000
 
         updatable.update(dt)
-        score += Bomb.pop_score()
+        score += Player.pop_score()
 
         for asteroid in asteroids:
             if not player.is_invincible and asteroid.collides_with(player):
@@ -78,6 +81,10 @@ def main():
                     log_event("asteroid_shot")
                     score += asteroid.split()
                     shot.kill()
+
+        if score >= next_bomb_threshold:
+            player.bombs += 1
+            next_bomb_threshold += BOMB_SCORE_INTERVAL
 
         screen.blit(background, (0, 0))
 

@@ -1,7 +1,5 @@
 import pygame
 
-from constants import LASER_BEAM_LIFETIME
-
 
 class LaserBeam(pygame.sprite.Sprite):
     def __init__(self, start, end):
@@ -11,14 +9,16 @@ class LaserBeam(pygame.sprite.Sprite):
             super().__init__()
         self.start = pygame.Vector2(start)
         self.end = pygame.Vector2(end)
-        self.lifetime = LASER_BEAM_LIFETIME
+
+    def set_points(self, start, end):
+        self.start.update(start)
+        self.end.update(end)
 
     def update(self, dt):
-        self.lifetime -= dt
-        if self.lifetime <= 0:
-            self.kill()
+        pass  # lifetime managed by Player
 
     def draw(self, screen):
-        alpha = self.lifetime / LASER_BEAM_LIFETIME  # 1.0 → 0.0
-        brightness = round(255 * alpha)
-        pygame.draw.line(screen, (brightness, brightness, 255), self.start, self.end, 2)
+        # Outer glow
+        pygame.draw.line(screen, (0, 80, 255), self.start, self.end, 4)
+        # Bright core
+        pygame.draw.line(screen, (180, 220, 255), self.start, self.end, 1)
