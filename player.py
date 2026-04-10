@@ -39,6 +39,7 @@ class Player(CircleShape):
         self._weapon_index = 0
         self._laser_beam = None
         self.laser_kill_timer = 0
+        self._thrusting = False
 
     @property
     def weapon(self):
@@ -78,12 +79,22 @@ class Player(CircleShape):
             pygame.draw.circle(screen, (255, 140, 0), exhaust, 5)
             pygame.draw.circle(screen, (255, 220, 80), exhaust, 2)
 
+    def kill(self):
+        self._stop_thruster()
+        self._kill_laser()
+        super().kill()
+
     def respawn(self, x, y):
         self.position = pygame.Vector2(x, y)
         self.velocity = pygame.Vector2(0, 0)
         self.rotation = 0
         self.invincibility_timer = PLAYER_INVINCIBILITY_SECONDS
         self._kill_laser()
+
+    def _stop_thruster(self):
+        if self._thrusting:
+            sounds.stop("thruster")
+            self._thrusting = False
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -109,6 +120,11 @@ class Player(CircleShape):
             self.move(-dt)
         if keys[pygame.K_w]:
             self.move(dt)
+            if not self._thrusting:
+                sounds.loop("thruster")
+                self._thrusting = True
+        else:
+            self._stop_thruster()
 
         if keys[pygame.K_SPACE] and self.weapon == "Laser":
             self._update_laser()

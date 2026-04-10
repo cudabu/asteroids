@@ -1,3 +1,4 @@
+import random
 import sys
 
 import pygame
@@ -13,6 +14,22 @@ from bomb import Bomb
 from laser import LaserBeam
 import sounds
 from starfield import Starfield
+
+
+HIGHSCORE_FILE = "highscore.txt"
+
+
+def load_highscore():
+    try:
+        with open(HIGHSCORE_FILE) as f:
+            return int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        return 0
+
+
+def save_highscore(score):
+    with open(HIGHSCORE_FILE, "w") as f:
+        f.write(str(score))
 
 
 def setup_groups():
@@ -42,9 +59,9 @@ def new_game():
     return updatable, drawable, asteroids, shots, player
 
 
-def draw_centered(screen, font, text, y, color="white"):
+def draw_centered(surface, font, text, y, color="white"):
     surf = font.render(text, True, color)
-    screen.blit(surf, (SCREEN_WIDTH // 2 - surf.get_width() // 2, y))
+    surface.blit(surf, (SCREEN_WIDTH // 2 - surf.get_width() // 2, y))
 
 
 def main():
@@ -54,11 +71,14 @@ def main():
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Asteroids")
+    canvas = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     starfield = Starfield()
 
     font_large = pygame.font.SysFont(None, 96)
     font_med = pygame.font.SysFont(None, 48)
     font_small = pygame.font.SysFont(None, 36)
+
+    highscore = load_highscore()
 
     # --- menu state (asteroids drift in background) ---
     menu_updatable, menu_drawable, _, _ = setup_groups()
@@ -69,6 +89,8 @@ def main():
     score = lives = next_bomb_threshold = 0
     game_over_timer = 0
     final_score = 0
+    shake_timer = 0.0
+    shake_intensity = 8
     dt = 0
 
     while True:
@@ -99,12 +121,10 @@ def main():
 
                 elif state == "game_over":
                     if game_over_timer <= 0 and event.key == pygame.K_RETURN:
-                        # Kill all game sprites and return to menu
                         updatable.empty()
                         drawable.empty()
                         asteroids.empty()
                         shots.empty()
-                        # Rebuild menu background field
                         menu_updatable, menu_drawable, _, _ = setup_groups()
                         AsteroidField()
                         state = "menu"
@@ -114,6 +134,7 @@ def main():
 
         if state == "menu":
             menu_updatable.update(dt)
+
         elif state == "playing":
             log_state()
             updatable.update(dt)
@@ -123,10 +144,13 @@ def main():
                 if not player.is_invincible and asteroid.collides_with(player):
                     log_event("player_hit")
                     lives -= 1
+                    shake_timer = 0.4
                     if lives == 0:
                         final_score = score
+                        if final_score > highscore:
+                            highscore = final_score
+                            save_highscore(highscore)
                         game_over_timer = 1.0
-                        player._kill_laser()
                         player.kill()
                         state = "game_over"
                         break
@@ -146,33 +170,49 @@ def main():
             game_over_timer -= dt
             updatable.update(dt)
 
-        # --- draw ---
-        screen.fill((5, 5, 15))
-        starfield.draw(screen)
+        # --- draw to canvas ---
+        canvas.fill((5, 5, 15))
+        starfield.draw(canvas)
 
         if state == "menu":
             for obj in menu_drawable:
-                obj.draw(screen)
-            draw_centered(screen, font_large, "ASTEROIDS", SCREEN_HEIGHT // 2 - 120, "white")
-            draw_centered(screen, font_med, "Press ENTER to Start", SCREEN_HEIGHT // 2, "cyan")
-            draw_centered(screen, font_med, "Press ESC to Exit", SCREEN_HEIGHT // 2 + 60, "white")
+                obj.draw(canvas)
+            draw_centered(canvas, font_large, "ASTEROIDS", SCREEN_HEIGHT // 2 - 140, "white")
+            draw_centered(canvas, font_med, "Press ENTER to Start", SCREEN_HEIGHT // 2 - 20, "cyan")
+            draw_centered(canvas, font_med, "Press ESC to Exit", SCREEN_HEIGHT // 2 + 50, "white")
+            if highscore > 0:
+                draw_centered(canvas, font_small, f"High Score: {highscore}", SCREEN_HEIGHT // 2 + 120, (255, 215, 0))
 
         elif state == "playing":
             for obj in drawable:
-                obj.draw(screen)
-            screen.blit(font_small.render(f"Score: {score}", True, "white"), (10, 10))
-            screen.blit(font_small.render(f"Lives: {lives}", True, "white"), (10, 40))
-            screen.blit(font_small.render(f"Bombs: {player.bombs}", True, "orange"), (10, 70))
-            screen.blit(font_small.render(f"Weapon: {player.weapon}", True, "cyan"), (10, 100))
+                obj.draw(canvas)
+            canvas.blit(font_small.render(f"Score: {score}", True, "white"), (10, 10))
+            canvas.blit(font_small.render(f"High Score: {highscore}", True, (255, 215, 0)), (10, 40))
+            canvas.blit(font_small.render(f"Lives: {lives}", True, "white"), (10, 70))
+            canvas.blit(font_small.render(f"Bombs: {player.bombs}", True, "orange"), (10, 100))
+            canvas.blit(font_small.render(f"Weapon: {player.weapon}", True, "cyan"), (10, 130))
 
         elif state == "game_over":
             for obj in drawable:
-                obj.draw(screen)
-            draw_centered(screen, font_large, "GAME OVER", SCREEN_HEIGHT // 2 - 120, "white")
-            draw_centered(screen, font_med, f"Score: {final_score}", SCREEN_HEIGHT // 2, "white")
+                obj.draw(canvas)
+            draw_centered(canvas, font_large, "GAME OVER", SCREEN_HEIGHT // 2 - 140, "white")
+            draw_centered(canvas, font_med, f"Score: {final_score}", SCREEN_HEIGHT // 2 - 20, "white")
+            if final_score >= highscore:
+                draw_centered(canvas, font_med, "New High Score!", SCREEN_HEIGHT // 2 + 45, (255, 215, 0))
+            else:
+                draw_centered(canvas, font_small, f"High Score: {highscore}", SCREEN_HEIGHT // 2 + 50, (255, 215, 0))
             if game_over_timer <= 0:
-                draw_centered(screen, font_med, "Press ENTER to return to menu", SCREEN_HEIGHT // 2 + 70, "cyan")
+                draw_centered(canvas, font_med, "Press ENTER to return to menu", SCREEN_HEIGHT // 2 + 110, "cyan")
 
+        # --- screen shake: blit canvas to screen with random offset ---
+        if shake_timer > 0:
+            shake_timer -= dt
+            ox = random.randint(-shake_intensity, shake_intensity)
+            oy = random.randint(-shake_intensity, shake_intensity)
+        else:
+            ox, oy = 0, 0
+
+        screen.blit(canvas, (ox, oy))
         pygame.display.flip()
 
 

@@ -11,6 +11,7 @@ def load():
         "laser_beam":   ("sounds/laser_beam.ogg",    0.3),
         "explosion":    ("sounds/explosion.ogg",     0.6),
         "bomb":         ("sounds/bomb.ogg",          0.8),
+        "thruster":     ("sounds/thruster.ogg",      0.25),
     }
     for name, (path, volume) in specs.items():
         snd = pygame.mixer.Sound(path)
