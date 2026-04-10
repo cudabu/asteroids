@@ -12,6 +12,7 @@ from constants import (
     LASER_KILL_RATE, SCREEN_WIDTH, SCREEN_HEIGHT,
 )
 from laser import LaserBeam
+import sounds
 from shot import Shot
 
 
@@ -122,6 +123,7 @@ class Player(CircleShape):
         if self._laser_beam:
             self._laser_beam.kill()
             self._laser_beam = None
+            sounds.stop("laser_beam")
 
     def _cycle_weapon(self, direction):
         self._kill_laser()
@@ -148,15 +150,18 @@ class Player(CircleShape):
             self.shoot_timer = RAPID_COOLDOWN
 
     def _shoot_single(self):
+        sounds.play("shoot")
         shot = Shot(self.position.x, self.position.y)
         shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation) * PLAYER_SHOOT_SPEED
 
     def _shoot_spread(self):
+        sounds.play("shoot_spread")
         for angle_offset in (-SPREAD_ANGLE, 0, SPREAD_ANGLE):
             shot = Shot(self.position.x, self.position.y)
             shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation + angle_offset) * PLAYER_SHOOT_SPEED
 
     def _shoot_rapid(self):
+        sounds.play("shoot")
         shot = Shot(self.position.x, self.position.y, RAPID_SHOT_RADIUS)
         shot.velocity = pygame.Vector2(0, 1).rotate(self.rotation) * RAPID_SHOT_SPEED
 
@@ -188,6 +193,7 @@ class Player(CircleShape):
 
         if self._laser_beam is None:
             self._laser_beam = LaserBeam(tip, end)
+            sounds.loop("laser_beam")
         else:
             self._laser_beam.set_points(tip, end)
 

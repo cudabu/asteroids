@@ -11,6 +11,7 @@ from shot import Shot
 from explosion import Explosion
 from bomb import Bomb
 from laser import LaserBeam
+import sounds
 
 
 def setup_groups():
@@ -47,6 +48,7 @@ def draw_centered(screen, font, text, y, color="white"):
 
 def main():
     pygame.init()
+    sounds.load()
     clock = pygame.time.Clock()
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))

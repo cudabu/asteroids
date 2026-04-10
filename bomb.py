@@ -6,6 +6,7 @@ from circleshape import CircleShape
 from constants import BOMB_RADIUS, BOMB_FUSE_SECONDS, BOMB_BLAST_RADIUS
 from explosion import Explosion
 from logger import log_event
+import sounds
 
 
 class Bomb(CircleShape):
@@ -30,6 +31,7 @@ class Bomb(CircleShape):
             self._detonate()
 
     def _detonate(self):
+        sounds.play("bomb")
         Explosion(self.position.x, self.position.y, BOMB_BLAST_RADIUS * 0.8)
         if self.asteroids:
             for asteroid in list(self.asteroids):

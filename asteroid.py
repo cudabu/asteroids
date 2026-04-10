@@ -6,6 +6,7 @@ from circleshape import CircleShape
 from constants import LINE_WIDTH, ASTEROID_MIN_RADIUS
 from explosion import Explosion
 from logger import log_event
+import sounds
 
 
 class Asteroid(CircleShape):
@@ -41,6 +42,7 @@ class Asteroid(CircleShape):
         self.wrap()
 
     def split(self):
+        sounds.play("explosion")
         Explosion(self.position.x, self.position.y, self.radius)
         self.kill()
         # Small asteroids worth the most — reward finishing them off
