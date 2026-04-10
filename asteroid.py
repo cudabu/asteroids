@@ -9,11 +9,31 @@ from logger import log_event
 
 
 class Asteroid(CircleShape):
+    VERTEX_COUNT = 12
+    RADIUS_VARIANCE = 0.35  # vertices vary ±35% from nominal radius
+    ANGLE_VARIANCE = 0.4    # vertices nudged ±40% of their slice angle
+
     def __init__(self, x, y, radius):
         super().__init__(x, y, radius)
+        self._vertices = self._generate_vertices()
+
+    def _generate_vertices(self):
+        slice_angle = 360 / self.VERTEX_COUNT
+        vertices = []
+        for i in range(self.VERTEX_COUNT):
+            angle = i * slice_angle + random.uniform(
+                -slice_angle * self.ANGLE_VARIANCE,
+                slice_angle * self.ANGLE_VARIANCE,
+            )
+            r = self.radius * random.uniform(
+                1 - self.RADIUS_VARIANCE, 1 + self.RADIUS_VARIANCE
+            )
+            vertices.append(pygame.Vector2(0, r).rotate(angle))
+        return vertices
 
     def draw(self, screen):
-        pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)
+        points = [self.position + v for v in self._vertices]
+        pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
 
     def update(self, dt):
         self.position += self.velocity * dt
