@@ -12,6 +12,7 @@ from explosion import Explosion
 from bomb import Bomb
 from laser import LaserBeam
 import sounds
+from starfield import Starfield
 
 
 def setup_groups():
@@ -53,9 +54,7 @@ def main():
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Asteroids")
-    background = pygame.transform.scale(
-        pygame.image.load("background.jpg"), (SCREEN_WIDTH, SCREEN_HEIGHT)
-    )
+    starfield = Starfield()
 
     font_large = pygame.font.SysFont(None, 96)
     font_med = pygame.font.SysFont(None, 48)
@@ -111,6 +110,8 @@ def main():
                         state = "menu"
 
         # --- update ---
+        starfield.update(player.velocity if player and state == "playing" else pygame.Vector2(0, 0), dt)
+
         if state == "menu":
             menu_updatable.update(dt)
         elif state == "playing":
@@ -146,7 +147,8 @@ def main():
             updatable.update(dt)
 
         # --- draw ---
-        screen.blit(background, (0, 0))
+        screen.fill((5, 5, 15))
+        starfield.draw(screen)
 
         if state == "menu":
             for obj in menu_drawable:
