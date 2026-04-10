@@ -10,6 +10,7 @@ from asteroidfield import AsteroidField
 from shot import Shot
 from explosion import Explosion
 from bomb import Bomb
+from laser import LaserBeam
 
 
 def main():
@@ -45,12 +46,19 @@ def main():
     Explosion.containers = (updatable, drawable)
     Bomb.containers = (updatable, drawable)
     Bomb.asteroids = asteroids
+    LaserBeam.containers = (updatable, drawable)
+    Player.asteroids = asteroids
 
     while True:
         log_state()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    player._cycle_weapon(-1)
+                elif event.key == pygame.K_e:
+                    player._cycle_weapon(1)
 
         dt = clock.tick(60) / 1000
 
@@ -82,6 +90,8 @@ def main():
         screen.blit(lives_surf, (10, 40))
         bombs_surf = font.render(f"Bombs: {player.bombs}", True, "orange")
         screen.blit(bombs_surf, (10, 70))
+        weapon_surf = font.render(f"Weapon: {player.weapon}", True, "cyan")
+        screen.blit(weapon_surf, (10, 100))
 
         pygame.display.flip()
 
