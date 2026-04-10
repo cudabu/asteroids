@@ -3,7 +3,7 @@ import sys
 
 import pygame
 
-from constants import SCREEN_HEIGHT, SCREEN_WIDTH, PLAYER_LIVES, BOMB_SCORE_INTERVAL
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH, PLAYER_LIVES, BOMB_SCORE_INTERVAL, ASTEROID_SPAWN_RATE_SECONDS
 from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
@@ -12,6 +12,7 @@ from shot import Shot
 from explosion import Explosion
 from bomb import Bomb
 from laser import LaserBeam
+from scorepopup import ScorePopup
 import sounds
 from starfield import Starfield
 
@@ -32,6 +33,12 @@ def save_highscore(score):
         f.write(str(score))
 
 
+def update_difficulty(score):
+    AsteroidField.speed_multiplier = min(2.0, 1.0 + score / 15000)
+    AsteroidField.spawn_rate = max(0.45, ASTEROID_SPAWN_RATE_SECONDS - score / 15000 * 0.35)
+    AsteroidField.max_asteroids = min(20, 10 + score // 3000)
+
+
 def setup_groups():
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
@@ -45,14 +52,19 @@ def setup_groups():
     Explosion.containers = (updatable, drawable)
     Bomb.containers = (updatable, drawable)
     LaserBeam.containers = (updatable, drawable)
+    ScorePopup.containers = (updatable, drawable)
 
     Bomb.asteroids = asteroids
     Player.asteroids = asteroids
+    AsteroidField.asteroids_group = asteroids
 
     return updatable, drawable, asteroids, shots
 
 
 def new_game():
+    AsteroidField.speed_multiplier = 1.0
+    AsteroidField.spawn_rate = ASTEROID_SPAWN_RATE_SECONDS
+    AsteroidField.max_asteroids = 10
     updatable, drawable, asteroids, shots = setup_groups()
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
     AsteroidField()
@@ -62,6 +74,15 @@ def new_game():
 def draw_centered(surface, font, text, y, color="white"):
     surf = font.render(text, True, color)
     surface.blit(surf, (SCREEN_WIDTH // 2 - surf.get_width() // 2, y))
+
+
+def shield_hud_text(player):
+    if player.shield_active:
+        return f"Shield: {player.shield_timer:.1f}s", (0, 200, 255)
+    elif player.shield_cooldown > 0:
+        return f"Shield: {player.shield_cooldown:.1f}s cd", (120, 120, 120)
+    else:
+        return "Shield: READY  [F]", (0, 255, 180)
 
 
 def main():
@@ -118,6 +139,8 @@ def main():
                         player._cycle_weapon(1)
                     elif event.key == pygame.K_b:
                         player.drop_bomb()
+                    elif event.key == pygame.K_f:
+                        player.activate_shield()
 
                 elif state == "game_over":
                     if game_over_timer <= 0 and event.key == pygame.K_RETURN:
@@ -139,9 +162,10 @@ def main():
             log_state()
             updatable.update(dt)
             score += Player.pop_score()
+            update_difficulty(score)
 
             for asteroid in list(asteroids):
-                if not player.is_invincible and asteroid.collides_with(player):
+                if not player.is_invincible and not player.shield_active and asteroid.collides_with(player):
                     log_event("player_hit")
                     lives -= 1
                     shake_timer = 0.4
@@ -191,13 +215,15 @@ def main():
             canvas.blit(font_small.render(f"Lives: {lives}", True, "white"), (10, 70))
             canvas.blit(font_small.render(f"Bombs: {player.bombs}", True, "orange"), (10, 100))
             canvas.blit(font_small.render(f"Weapon: {player.weapon}", True, "cyan"), (10, 130))
+            shield_text, shield_color = shield_hud_text(player)
+            canvas.blit(font_small.render(shield_text, True, shield_color), (10, 160))
 
         elif state == "game_over":
             for obj in drawable:
                 obj.draw(canvas)
             draw_centered(canvas, font_large, "GAME OVER", SCREEN_HEIGHT // 2 - 140, "white")
             draw_centered(canvas, font_med, f"Score: {final_score}", SCREEN_HEIGHT // 2 - 20, "white")
-            if final_score >= highscore:
+            if final_score >= highscore and final_score > 0:
                 draw_centered(canvas, font_med, "New High Score!", SCREEN_HEIGHT // 2 + 45, (255, 215, 0))
             else:
                 draw_centered(canvas, font_small, f"High Score: {highscore}", SCREEN_HEIGHT // 2 + 50, (255, 215, 0))

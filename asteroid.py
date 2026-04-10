@@ -6,17 +6,20 @@ from circleshape import CircleShape
 from constants import LINE_WIDTH, ASTEROID_MIN_RADIUS
 from explosion import Explosion
 from logger import log_event
+from scorepopup import ScorePopup
 import sounds
 
 
 class Asteroid(CircleShape):
     VERTEX_COUNT = 12
-    RADIUS_VARIANCE = 0.35  # vertices vary ±35% from nominal radius
-    ANGLE_VARIANCE = 0.4    # vertices nudged ±40% of their slice angle
+    RADIUS_VARIANCE = 0.35
+    ANGLE_VARIANCE = 0.4
 
     def __init__(self, x, y, radius):
         super().__init__(x, y, radius)
         self._vertices = self._generate_vertices()
+        self.rotation = 0
+        self.spin_speed = random.uniform(-60, 60)
 
     def _generate_vertices(self):
         slice_angle = 360 / self.VERTEX_COUNT
@@ -33,21 +36,22 @@ class Asteroid(CircleShape):
         return vertices
 
     def draw(self, screen):
-        points = [self.position + v for v in self._vertices]
-        pygame.draw.polygon(screen, (55, 50, 45), points)          # rocky fill
-        pygame.draw.polygon(screen, (160, 148, 128), points, 2)    # lighter outline
+        points = [self.position + v.rotate(self.rotation) for v in self._vertices]
+        pygame.draw.polygon(screen, (55, 50, 45), points)
+        pygame.draw.polygon(screen, (160, 148, 128), points, 2)
 
     def update(self, dt):
         self.position += self.velocity * dt
+        self.rotation += self.spin_speed * dt
         self.wrap()
 
     def split(self):
         sounds.play("explosion")
         Explosion(self.position.x, self.position.y, self.radius)
         self.kill()
-        # Small asteroids worth the most — reward finishing them off
         kind = round(self.radius / ASTEROID_MIN_RADIUS)
         points = {1: 100, 2: 50, 3: 20}.get(kind, 100)
+        ScorePopup(self.position.x, self.position.y, points)
         if self.radius <= ASTEROID_MIN_RADIUS:
             return points
         log_event("asteroid_split")

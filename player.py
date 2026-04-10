@@ -10,6 +10,7 @@ from constants import (
     SPREAD_ANGLE, SPREAD_COOLDOWN,
     RAPID_COOLDOWN, RAPID_SHOT_SPEED, RAPID_SHOT_RADIUS,
     LASER_KILL_RATE, SCREEN_WIDTH, SCREEN_HEIGHT,
+    SHIELD_DURATION, SHIELD_COOLDOWN,
 )
 from laser import LaserBeam
 import sounds
@@ -40,6 +41,9 @@ class Player(CircleShape):
         self._laser_beam = None
         self.laser_kill_timer = 0
         self._thrusting = False
+        self.shield_active = False
+        self.shield_timer = 0.0
+        self.shield_cooldown = 0.0
 
     @property
     def weapon(self):
@@ -79,6 +83,14 @@ class Player(CircleShape):
             pygame.draw.circle(screen, (255, 140, 0), exhaust, 5)
             pygame.draw.circle(screen, (255, 220, 80), exhaust, 2)
 
+        # Shield ring
+        if self.shield_active:
+            import math
+            pulse = abs(math.sin(self.shield_timer * 6))
+            r = round(self.radius + 10 + pulse * 4)
+            pygame.draw.circle(screen, (0, 180, 255), self.position, r, 2)
+            pygame.draw.circle(screen, (0, 80, 180), self.position, r - 4, 1)
+
     def kill(self):
         self._stop_thruster()
         self._kill_laser()
@@ -104,10 +116,22 @@ class Player(CircleShape):
         if self.velocity.length() > PLAYER_MAX_SPEED:
             self.velocity.scale_to_length(PLAYER_MAX_SPEED)
 
+    def activate_shield(self):
+        if not self.shield_active and self.shield_cooldown <= 0:
+            self.shield_active = True
+            self.shield_timer = SHIELD_DURATION
+
     def update(self, dt):
         self.shoot_timer -= dt
         self.laser_kill_timer -= dt
         self.invincibility_timer = max(0, self.invincibility_timer - dt)
+        if self.shield_active:
+            self.shield_timer -= dt
+            if self.shield_timer <= 0:
+                self.shield_active = False
+                self.shield_cooldown = SHIELD_COOLDOWN
+        elif self.shield_cooldown > 0:
+            self.shield_cooldown -= dt
         self.velocity *= PLAYER_DRAG ** dt
         self.position += self.velocity * dt
         keys = pygame.key.get_pressed()
