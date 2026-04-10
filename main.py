@@ -29,6 +29,9 @@ def main():
     shots = pygame.sprite.Group()
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    background = pygame.transform.scale(
+        pygame.image.load("background.jpg"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    )
 
     Player.containers = (updatable, drawable)
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
@@ -64,7 +67,7 @@ def main():
                     score += asteroid.split()
                     shot.kill()
 
-        screen.fill("black")
+        screen.blit(background, (0, 0))
 
         for obj in drawable:
             obj.draw(screen)
