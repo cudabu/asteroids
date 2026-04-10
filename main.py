@@ -9,6 +9,7 @@ from asteroid import Asteroid
 from asteroidfield import AsteroidField
 from shot import Shot
 from explosion import Explosion
+from bomb import Bomb
 
 
 def main():
@@ -42,6 +43,8 @@ def main():
 
     Shot.containers = (shots, updatable, drawable)
     Explosion.containers = (updatable, drawable)
+    Bomb.containers = (updatable, drawable)
+    Bomb.asteroids = asteroids
 
     while True:
         log_state()
@@ -52,6 +55,7 @@ def main():
         dt = clock.tick(60) / 1000
 
         updatable.update(dt)
+        score += Bomb.pop_score()
 
         for asteroid in asteroids:
             if not player.is_invincible and asteroid.collides_with(player):
@@ -76,6 +80,8 @@ def main():
         screen.blit(score_surf, (10, 10))
         lives_surf = font.render(f"Lives: {lives}", True, "white")
         screen.blit(lives_surf, (10, 40))
+        bombs_surf = font.render(f"Bombs: {player.bombs}", True, "orange")
+        screen.blit(bombs_surf, (10, 70))
 
         pygame.display.flip()
 
