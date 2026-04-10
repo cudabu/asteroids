@@ -1,7 +1,7 @@
 import pygame
 
 from circleshape import CircleShape
-from constants import PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS
+from constants import PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED, PLAYER_SPEED, PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS, PLAYER_INVINCIBILITY_SECONDS
 from shot import Shot
 
 
@@ -10,6 +10,7 @@ class Player(CircleShape):
         super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
         self.shoot_timer = 0
+        self.invincibility_timer = 0
 
     def triangle(self):
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
@@ -19,8 +20,21 @@ class Player(CircleShape):
         c = self.position - forward * self.radius + right
         return [a, b, c]
     
+    @property
+    def is_invincible(self):
+        return self.invincibility_timer > 0
+
     def draw(self, screen):
+        # Flash by skipping draw on alternating 0.1s intervals while invincible
+        if self.is_invincible and int(self.invincibility_timer * 10) % 2 == 0:
+            return
         pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)
+
+    def respawn(self, x, y):
+        self.position = pygame.Vector2(x, y)
+        self.velocity = pygame.Vector2(0, 0)
+        self.rotation = 0
+        self.invincibility_timer = PLAYER_INVINCIBILITY_SECONDS
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -30,6 +44,7 @@ class Player(CircleShape):
 
     def update(self, dt):
         self.shoot_timer -= dt
+        self.invincibility_timer = max(0, self.invincibility_timer - dt)
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_a]:

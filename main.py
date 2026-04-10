@@ -2,7 +2,7 @@ import sys
 
 import pygame
 
-from constants import SCREEN_HEIGHT, SCREEN_WIDTH
+from constants import SCREEN_HEIGHT, SCREEN_WIDTH, PLAYER_LIVES
 from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
@@ -19,6 +19,7 @@ def main():
     clock = pygame.time.Clock()
     dt = 0
     score = 0
+    lives = PLAYER_LIVES
     font = pygame.font.SysFont(None, 36)
 
     updatable = pygame.sprite.Group()
@@ -48,10 +49,13 @@ def main():
         updatable.update(dt)
 
         for asteroid in asteroids:
-            if asteroid.collides_with(player):
+            if not player.is_invincible and asteroid.collides_with(player):
                 log_event("player_hit")
-                print(f"Game over! Final score: {score}")
-                sys.exit()
+                lives -= 1
+                if lives == 0:
+                    print(f"Game over! Final score: {score}")
+                    sys.exit()
+                player.respawn(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
             for shot in shots:
                 if asteroid.collides_with(shot):
                     log_event("asteroid_shot")
@@ -65,6 +69,8 @@ def main():
 
         score_surf = font.render(f"Score: {score}", True, "white")
         screen.blit(score_surf, (10, 10))
+        lives_surf = font.render(f"Lives: {lives}", True, "white")
+        screen.blit(lives_surf, (10, 40))
 
         pygame.display.flip()
 
