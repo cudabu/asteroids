@@ -3,7 +3,7 @@ import pygame
 from bomb import Bomb
 from circleshape import CircleShape
 from constants import (
-    PLAYER_RADIUS, LINE_WIDTH, PLAYER_TURN_SPEED,
+    PLAYER_RADIUS, PLAYER_TURN_SPEED,
     PLAYER_ACCELERATION, PLAYER_DRAG, PLAYER_MAX_SPEED,
     PLAYER_SHOOT_SPEED, PLAYER_SHOOT_COOLDOWN_SECONDS,
     PLAYER_INVINCIBILITY_SECONDS, PLAYER_BOMB_COUNT,
@@ -58,7 +58,24 @@ class Player(CircleShape):
     def draw(self, screen):
         if self.is_invincible and int(self.invincibility_timer * 10) % 2 == 0:
             return
-        pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)
+
+        forward = pygame.Vector2(0, 1).rotate(self.rotation)
+        a, b, c = self.triangle()
+
+        # Hull fill + outline
+        pygame.draw.polygon(screen, (15, 30, 65), [a, b, c])
+        pygame.draw.polygon(screen, (150, 200, 255), [a, b, c], 2)
+
+        # Cockpit — small circle just behind the nose
+        cockpit = self.position + forward * (self.radius * 0.35)
+        pygame.draw.circle(screen, (80, 140, 255), cockpit, 4)
+
+        # Engine glow when thrusting forward
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            exhaust = self.position - forward * self.radius
+            pygame.draw.circle(screen, (255, 140, 0), exhaust, 5)
+            pygame.draw.circle(screen, (255, 220, 80), exhaust, 2)
 
     def respawn(self, x, y):
         self.position = pygame.Vector2(x, y)

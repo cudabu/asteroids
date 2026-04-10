@@ -33,7 +33,8 @@ class Asteroid(CircleShape):
 
     def draw(self, screen):
         points = [self.position + v for v in self._vertices]
-        pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
+        pygame.draw.polygon(screen, (55, 50, 45), points)          # rocky fill
+        pygame.draw.polygon(screen, (160, 148, 128), points, 2)    # lighter outline
 
     def update(self, dt):
         self.position += self.velocity * dt
